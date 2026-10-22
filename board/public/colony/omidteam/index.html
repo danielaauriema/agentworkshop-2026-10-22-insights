@@ -1,45 +1,266 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Visit timing</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Best time to visit</title>
 <style>
-body{font:14px system-ui;margin:12px;background:#111;color:#eee}
-input,select,button{margin:2px;padding:4px}
-.bar{display:inline-block;width:22px;margin-right:2px;vertical-align:bottom;text-align:center;font-size:10px}
-.bar i{display:block}
-.low{background:#3a9}.medium{background:#ec4}.high{background:#e55}
-.chart{height:110px;display:flex;align-items:flex-end}
+:root{--bg:#f3f2ee;--card:#fff;--ink:#1f2328;--mut:#6b7280;--line:#e7e5df;--acc:#b3301f;--low:#2a9d8f;--mid:#f4b942;--high:#e4572e;--closed:#d9d7d0}
+*{box-sizing:border-box}
+body{margin:0;padding:12px;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.card{background:var(--card);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:14px;margin-bottom:12px}
+h1{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+h1 i{width:8px;height:8px;border-radius:50%;background:var(--acc);display:inline-block}
+form{display:flex;flex-wrap:wrap;gap:8px}
+form label{display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:2px}
+input,select,button{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+button.go-btn{background:var(--acc);color:#fff;border-color:var(--acc);cursor:pointer;align-self:flex-end;font-weight:600}
+.hero{display:flex;gap:12px;flex-wrap:wrap}
+.tile{flex:1 1 200px;border-radius:12px;padding:12px 14px;border:1px solid var(--line)}
+.chip{margin-left:auto;font-size:11px;font-weight:600;color:#1b7a6e;background:#e8f6f3;border:1px solid #bfe5df;border-radius:999px;padding:2px 10px;animation:pop .4s both;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
+.tile b{display:block;font-size:22px;margin:2px 0}
+.tile span{color:var(--mut);font-size:12px}
+.go{background:#e8f6f3;border-color:#bfe5df}.go b{color:#1b7a6e}
+.avoid{background:#fdeeea;border-color:#f6cfc4}.avoid b{color:#b53a1c}
+.you.good{background:#e8f6f3;border-color:#bfe5df}.you.good b{color:#1b7a6e}
+.you.busy,.you.closed{background:#fdeeea;border-color:#f6cfc4}.you.busy b,.you.closed b{color:#b53a1c}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tab{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:4px 10px;font-size:12px;cursor:pointer}
+.tab.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.chartwrap{position:relative;padding-left:30px;padding-top:16px}
+.grid{position:absolute;left:0;right:0;top:16px;height:150px;pointer-events:none}
+.grid div{position:absolute;left:30px;right:0;border-top:1px dashed var(--line)}
+.grid span{position:absolute;left:-30px;font-size:10px;color:var(--mut);transform:translateY(-50%)}
+.chart{display:flex;align-items:flex-end;gap:4px;height:150px;position:relative}
+.col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;position:relative}
+.bar{border-radius:6px 6px 2px 2px;min-height:4px;transition:transform .12s}
+.col:hover .bar{filter:brightness(1.1)}
+.low{background:linear-gradient(var(--low),#52b8ab)}.medium{background:linear-gradient(var(--mid),#f7cf78)}.high{background:linear-gradient(var(--high),#ee8461)}
+.closed{background:repeating-linear-gradient(45deg,var(--closed),var(--closed) 4px,#eceae4 4px,#eceae4 8px)}
+.col.best .bar{outline:2px solid #1b7a6e;outline-offset:1px}
+.col.me::after{content:"you";position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--acc)}
+.col.now::before{content:"";position:absolute;top:0;bottom:0;left:50%;border-left:2px dotted var(--acc);opacity:.6}
+.xl{display:flex;gap:4px;margin-top:4px}.xl span{flex:1;text-align:center;font-size:10px;color:var(--mut)}
+.read{min-height:20px;margin-top:8px;font-size:12px;color:var(--mut)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.src{color:var(--mut);font-size:11px;margin-top:6px}
+.msg{padding:16px;text-align:center;color:var(--mut)}
+.heat{display:grid;gap:3px;margin-top:4px}
+.heat .row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mut)}.heat .row em{width:80px;font-style:normal}
+.heat .cells{display:flex;gap:2px;flex:1}.heat .cells b{flex:1;height:12px;border-radius:3px;display:block}
+
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(179,48,31,.5)}100%{box-shadow:0 0 0 9px rgba(179,48,31,0)}}
+@keyframes glow{0%,100%{outline-color:rgba(27,122,110,.35)}50%{outline-color:#1b7a6e}}
+@keyframes bob{0%,100%{transform:translateX(-50%)}50%{transform:translateX(-50%) translateY(-3px)}}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:.9}}
+@keyframes sheen{from{background-position:-200px 0}to{background-position:200px 0}}
+@keyframes fadecell{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+#out:not(.still) .card{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+#out:not(.still) .card:nth-child(2){animation-delay:.12s}
+#out:not(.still) .card:nth-child(3){animation-delay:.24s}
+.hero .tile{animation:pop .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*110ms + 120ms);transition:transform .2s,box-shadow .2s}
+.hero .tile:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(0,0,0,.1)}
+.bar{transform-origin:bottom;animation:grow .7s cubic-bezier(.2,.9,.3,1.1) both;animation-delay:calc(var(--i,0)*30ms + 150ms)}
+.col:hover .bar{transform:scaleY(1.04);filter:brightness(1.12)}
+.col.best .bar{animation:grow .7s cubic-bezier(.2,.9,.3,1.1) both,glow 2s ease-in-out 1s infinite;animation-delay:calc(var(--i,0)*30ms + 150ms),0s}
+.col.me::after{animation:bob 1.6s ease-in-out infinite}
+.col.now::before{animation:blink 1.6s ease-in-out infinite}
+h1 i{animation:pulse 1.8s ease-out infinite}
+.heat .cells b{animation:fadecell .35s ease both;animation-delay:calc(var(--i,0)*14ms + var(--r,0)*60ms)}
+.skel{height:14px;border-radius:7px;margin:10px 0;background:linear-gradient(90deg,#eee 25%,#f8f8f6 37%,#eee 63%);background-size:400px 100%;animation:sheen 1.1s linear infinite}
+@media (prefers-reduced-motion:reduce){html:not(.force) *,html:not(.force) *::before,html:not(.force) *::after{animation:none!important;transition:none!important}}
 </style></head><body>
-<h3>Best time to visit</h3>
+<div class="card">
+<h1><i></i>Best time to visit<span id="chip" class="chip" hidden></span></h1>
 <form id="f">
- <input name="id" placeholder="restaurant id" value="demo">
- <input name="from" type="date"><input name="to" type="date">
- <select name="meal"><option>any</option><option>lunch</option><option>dinner</option></select>
- <input name="maxWaitMinutes" type="number" value="15" style="width:60px" title="max wait (min)">
- <button>Go</button>
+ <label>Nearby restaurants<select id="demo"></select></label>
+ <button type="button" id="loc" class="go-btn" style="background:#fff;color:var(--acc)">Use my location</button>
+ <label>Restaurant id<input name="id" size="14" placeholder="auto"></label>
+ <label>From<input name="from" type="date"></label>
+ <label>To<input name="to" type="date"></label>
+ <label>Visit time<input name="time" type="time"></label>
+ <label>Meal<select name="meal"><option value="any">Any</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option></select></label>
+ <label>Max wait<select name="maxWaitMinutes"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="30">30 min</option><option value="60">Any</option></select></label>
+ <input name="lat" type="hidden"><input name="lng" type="hidden"><input name="country" type="hidden" value="SE">
+ <button class="go-btn">Check</button>
 </form>
+</div>
 <div id="out"></div>
+<script src="/colony/seba5tian/tablewise-select.js"></script>
 <script>
 const f = document.getElementById('f'), out = document.getElementById('out');
 const today = new Date().toISOString().slice(0, 10);
 const qs = new URLSearchParams(location.search);
 for (const e of f.elements) if (e.name) e.value = qs.get(e.name) || e.value || (e.type === 'date' ? today : '');
+if (qs.get('max_wait_min')) f.elements.maxWaitMinutes.value = qs.get('max_wait_min');
+const demo = document.getElementById('demo');
+const place = { lat: 59.3293, lng: 18.0686 };
+let list = [];
+const num = v => (Number.isFinite(+v) ? +v : null);
+function normalize(j) {
+  const arr = Array.isArray(j) ? j : j && (j.restaurants || j.results || j.items || j.data) || [];
+  return arr.map(r => ({ id: r.id || r.restaurant_id, name: r.name || r.title, lat: num(r.lat != null ? r.lat : r.location && r.location.lat), lng: num(r.lng != null ? r.lng : r.location && (r.location.lng != null ? r.location.lng : r.location.lon)) }))
+    .filter(r => r.id && r.name).slice(0, 40);
+}
+async function tryGet(url) {
+  const r = await fetch(url, { signal: AbortSignal.timeout(9000) });
+  const j = await r.json(); const l = normalize(j);
+  if (!r.ok || !l.length) throw new Error('empty');
+  return l;
+}
+async function tryPhoton() {
+  const r = await fetch('https://photon.komoot.io/api/?q=restaurant&osm_tag=amenity:restaurant&lat=' + place.lat + '&lon=' + place.lng + '&limit=30', { signal: AbortSignal.timeout(9000) });
+  const j = await r.json(), t = { N: 'node', W: 'way', R: 'relation' };
+  const l = ((j && j.features) || []).map(x => { const p = x.properties || {}, c = (x.geometry || {}).coordinates || []; return { id: t[p.osm_type] && p.osm_id ? 'osm:' + t[p.osm_type] + '/' + p.osm_id : null, name: p.name, lat: num(c[1]), lng: num(c[0]) }; }).filter(x => x.id && x.name);
+  if (!l.length) throw new Error('empty');
+  return l;
+}
+async function loadNearby() {
+  demo.textContent = ''; demo.appendChild(new Option('Loading restaurants...', ''));
+  const q = 'lat=' + place.lat + '&lng=' + place.lng + '&radius_m=1000';
+  try {
+    list = await Promise.any([tryGet('/t/daniela/search?' + q + '&limit=30'), tryGet('/t/bhaeha-team/restaurants?' + q)]);
+  } catch (e) {
+    try { list = await tryPhoton(); } catch (e2) { list = []; }
+  }
+  if (!list.length) {
+    demo.textContent = ''; demo.appendChild(new Option('No restaurants yet, retrying...', ''));
+    setTimeout(loadNearby, 5000); return;
+  }
+  demo.textContent = '';
+  demo.appendChild(new Option('Pick one (' + list.length + ')...', ''));
+  list.forEach((r, i) => demo.appendChild(new Option(r.name, String(i))));
+  if (!f.elements.id.value && !followed) { demo.value = '0'; demo.dispatchEvent(new Event('change')); }
+}
+demo.addEventListener('change', () => {
+  const r = list[+demo.value]; if (!r) return;
+  curName = r.name; chip.hidden = true; f.elements.id.value = r.id; f.elements.lat.value = r.lat != null ? r.lat : ''; f.elements.lng.value = r.lng != null ? r.lng : ''; run();
+});
+document.getElementById('loc').addEventListener('click', () => {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(p => { place.lat = p.coords.latitude; place.lng = p.coords.longitude; loadNearby(); }, () => {});
+});
+loadNearby();
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-async function run() {
-  out.textContent = 'Loading...';
-  const r = await fetch('/t/omidteam/timing?' + new URLSearchParams(new FormData(f)));
-  const j = await r.json();
-  out.textContent = '';
-  if (j.error) return out.appendChild(el('p', '', j.error));
-  for (const d of j.days) {
-    out.appendChild(el('h4', '', d.date + ' - best: ' + d.best_times.map(b => b.time + ' (~' + b.est_wait_minutes + ' min wait)').join(', ')));
-    const chart = el('div', 'chart');
-    for (const h of d.hours) {
-      const b = el('div', 'bar'); const i = el('i', h.level); i.style.height = Math.max(3, h.crowd) + 'px';
-      b.appendChild(i); b.appendChild(el('span', '', h.hour)); b.title = h.crowd + '% crowded, wait ~' + h.est_wait_minutes + ' min';
-      chart.appendChild(b);
-    }
-    out.appendChild(chart);
+const pad = n => String(n).padStart(2, '0');
+const win = t => t.length ? t[0].time + '-' + pad(+t[t.length - 1].time.slice(0, 2) + 1) + ':00' : null;
+const dayName = s => new Date(s + 'T12:00:00Z').toLocaleDateString('en', { weekday: 'short', day: 'numeric', month: 'short' });
+let data = null, sel = 0, curName = '';
+const chip = document.getElementById('chip');
+const force = new URLSearchParams(location.search).get('motion') === '1';
+if (force) document.documentElement.classList.add('force');
+const calm = !force && window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function countUp(node, to, fmt) {
+  if (calm || !window.requestAnimationFrame) { node.textContent = fmt(to); return; }
+  const t0 = performance.now();
+  const step = t => { const k = Math.min(1, (t - t0) / 900); node.textContent = fmt(Math.round(to * (1 - Math.pow(1 - k, 3)))); if (k < 1) requestAnimationFrame(step); };
+  node.textContent = fmt(0); requestAnimationFrame(step);
+}
+function tile(cls, small, big, sub, n) {
+  const t = el('div', 'tile ' + cls), sp = el('span', '', sub); t.appendChild(el('small', '', small)); t.appendChild(el('b', '', big)); t.appendChild(sp);
+  if (n && sub.includes('{n}')) countUp(sp, n, v => sub.replace('{n}', v));
+  else sp.textContent = sub.replace('{n}', n);
+  return t;
+}
+function startsIn(date, time) {
+  const ms = new Date(date + 'T' + time + ':00') - Date.now();
+  if (!(ms > 0) || ms > 36e5 * 48) return '';
+  const m = Math.round(ms / 6e4), h = Math.floor(m / 60);
+  return ' · starts in ' + (h ? h + 'h ' : '') + (m % 60) + 'm';
+}
+
+function heroAdd(h, t) { t.style.setProperty('--i', h.children.length); h.appendChild(t); }
+function render(again) {
+  out.textContent = ''; out.classList.toggle('still', !!again);
+  const j = data, card = el('div', 'card');
+  const slots = j.days.filter(d => d.best_times.length);
+  const hero = el('div', 'hero');
+  if (slots.length) {
+    const b = slots.slice().sort((a, c) => a.best_times[0].est_wait_minutes - c.best_times[0].est_wait_minutes || a.date.localeCompare(c.date))[0];
+    heroAdd(hero, tile('go', 'Go', win(b.best_times), dayName(b.date) + ', about {n} min wait' + startsIn(b.date, b.best_times[0].time), b.best_times[0].est_wait_minutes));
+  } else heroAdd(hero, tile('avoid', 'No open slot', 'Closed', 'Try other dates or meal'));
+  const worst = j.days.slice().sort((a, c) => c.busiest.crowd - a.busiest.crowd)[0];
+  if (worst && worst.busiest.crowd >= 55) heroAdd(hero, tile('avoid', 'Avoid', worst.busiest.time, dayName(worst.date) + ', {n}% crowded', worst.busiest.crowd));
+  if (j.requested) {
+    const r = j.requested, label = { good: 'Good choice', busy: 'Busy then', closed: 'Closed then' }[r.verdict];
+    heroAdd(hero, tile('you ' + r.verdict, 'Your time ' + r.time, label, r.verdict === 'good' ? 'about ' + r.est_wait_minutes + ' min wait' : (r.better_time ? 'try ' + r.better_time + ' instead' : 'no better slot')));
+  }
+  card.appendChild(hero);
+  if (slots.length) {
+    const b0 = slots.slice().sort((a, c) => a.best_times[0].est_wait_minutes - c.best_times[0].est_wait_minutes || a.date.localeCompare(c.date))[0];
+    const btn = el('button', 'tab copy', 'Copy plan'); btn.type = 'button';
+    const plan = (curName || f.elements.id.value) + ': go ' + dayName(b0.date) + ' ' + win(b0.best_times) + ', about ' + b0.best_times[0].est_wait_minutes + ' min wait';
+    btn.onclick = async () => { try { await navigator.clipboard.writeText(plan); btn.textContent = 'Copied!'; } catch (e) { btn.textContent = plan; } setTimeout(() => { btn.textContent = 'Copy plan'; }, 2000); };
+    const row = el('div', 'tabs'); row.style.marginTop = '10px'; row.appendChild(btn); card.appendChild(row);
+  }
+  out.appendChild(card);
+
+  const c2 = el('div', 'card');
+  if (j.days.length > 1) {
+    const tabs = el('div', 'tabs');
+    j.days.forEach((d, i) => { const t = el('button', 'tab' + (i === sel ? ' on' : ''), dayName(d.date)); t.type = 'button'; t.onclick = () => { sel = i; render(true); }; tabs.appendChild(t); });
+    c2.appendChild(tabs);
+  }
+  const d = j.days[sel], wrap = el('div', 'chartwrap'), grid = el('div', 'grid');
+  [100, 50, 0].forEach(v => { const l = el('div'); l.style.top = (150 - v * 1.5) + 'px'; l.appendChild(el('span', '', v)); grid.appendChild(l); });
+  wrap.appendChild(grid);
+  const chart = el('div', 'chart'), xl = el('div', 'xl'), read = el('div', 'read', 'Hover a bar for details.');
+  const bestHours = new Set(d.best_times.map(b => +b.time.slice(0, 2)));
+  const myHour = j.requested && j.requested.date === d.date ? +j.requested.time.slice(0, 2) : null;
+  const nowH = d.date === today ? new Date().getHours() : null;
+  for (const h of d.hours) {
+    const col = el('div', 'col' + (bestHours.has(h.hour) ? ' best' : '') + (h.hour === myHour ? ' me' : '') + (h.hour === nowH ? ' now' : ''));
+    const bar = el('div', 'bar ' + (h.open === false ? 'closed' : h.level)); bar.style.height = Math.max(4, h.crowd * 1.5) + 'px'; bar.style.setProperty('--i', h.hour);
+    col.style.setProperty('--i', h.hour); col.appendChild(bar);
+    col.onmouseenter = () => { read.textContent = pad(h.hour) + ':00  ' + (h.open === false ? 'closed' : h.crowd + '% crowded, about ' + h.est_wait_minutes + ' min wait'); };
+    chart.appendChild(col); xl.appendChild(el('span', '', h.hour));
+  }
+  wrap.appendChild(chart); wrap.appendChild(xl); c2.appendChild(wrap); c2.appendChild(read);
+  const lg = el('div', 'legend');
+  [['low', 'Quiet'], ['medium', 'Busy'], ['high', 'Packed'], ['closed', 'Closed']].forEach(([c, t]) => { const s = el('span'); s.appendChild(el('i', c)); s.appendChild(document.createTextNode(t)); lg.appendChild(s); });
+  lg.appendChild(el('span', '', 'Outlined = best window'));
+  c2.appendChild(lg);
+  c2.appendChild(el('div', 'src', 'Estimates, not live counts. Data: ' + j.source));
+  out.appendChild(c2);
+
+  if (j.days.length > 1) {
+    const c3 = el('div', 'card'); c3.appendChild(el('div', 'src', 'All days at a glance'));
+    const heat = el('div', 'heat');
+    j.days.forEach(day => {
+      const row = el('div', 'row'), cells = el('div', 'cells'); row.appendChild(el('em', '', dayName(day.date)));
+      day.hours.forEach(h => { const b = el('b', h.open === false ? 'closed' : h.level); b.style.setProperty('--i', h.hour); b.style.setProperty('--r', j.days.indexOf(day)); b.title = pad(h.hour) + ':00 ' + h.crowd + '%'; cells.appendChild(b); });
+      row.appendChild(cells); heat.appendChild(row);
+    });
+    c3.appendChild(heat); out.appendChild(c3);
   }
 }
+
+async function run() {
+  out.textContent = ''; out.classList.remove('still'); const sk = el('div', 'card'); for (const w of [40, 100, 85, 60]) { const k = el('div', 'skel'); k.style.width = w + '%'; sk.appendChild(k); } out.appendChild(sk);
+  try {
+    const p = new URLSearchParams(new FormData(f));
+    for (const [k, v] of [...p]) if (v === '') p.delete(k);
+    const r = await fetch('/t/omidteam/timing?' + p);
+    const j = await r.json();
+    if (j.error) { out.textContent = ''; return out.appendChild(el('div', 'card msg', j.error)); }
+    data = j; sel = 0; render();
+  } catch (e) { out.textContent = ''; out.appendChild(el('div', 'card msg', 'Timing is unavailable right now.')); }
+}
 f.addEventListener('submit', e => { e.preventDefault(); run(); });
-run();
+const isDate = v => /^\d{4}-\d{2}-\d{2}/.test(v || ''), isTime = v => /^\d{2}:\d{2}$/.test(v || '');
+let followed = false;
+function follow(s) {
+  const r = s.restaurant, e = f.elements;
+  e.id.value = r.id; e.lat.value = r.lat; e.lng.value = r.lng;
+  if (isDate(s.from)) e.from.value = s.from.slice(0, 10);
+  if (isDate(s.to)) e.to.value = s.to.slice(0, 10);
+  else if (isDate(s.from)) e.to.value = s.from.slice(0, 10);
+  if (isTime(s.time)) e.time.value = s.time;
+  followed = true; curName = r.name || r.id; chip.hidden = false; chip.textContent = 'Synced with map: ' + curName; run();
+}
+if (window.TableWiseSelect) TableWiseSelect.onSelect(follow);
+if (f.elements.id.value) run();
 </script></body></html>
