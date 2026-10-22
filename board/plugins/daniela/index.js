@@ -33,6 +33,7 @@ module.exports = {
 
     const startedAt = performance.now();
     try {
+      const startedAt = performance.now();
       const search = parseSearch(new URL(req.url, 'http://localhost'));
       const result = await searchRestaurants(search);
       metrics.record({
